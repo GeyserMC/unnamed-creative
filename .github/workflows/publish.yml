@@ -1,0 +1,39 @@
+name: Publish
+
+on: 
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository and submodules
+        uses: actions/checkout@v6
+        with:
+          submodules: recursive
+
+      - uses: actions/setup-java@v5
+        with:
+          java-version: 21
+          distribution: temurin
+
+      - uses: gradle/actions/setup-gradle@v5
+
+      - name: Build
+        run: ./gradlew build
+
+      - name: Publish
+        if: ${{ success() && github.repository == 'GeyserMC/unnamed-creative' }}
+        env:
+          ORG_GRADLE_PROJECT_opencollabUsername: ${{ vars.DEPLOY_USER }}
+          ORG_GRADLE_PROJECT_opencollabPassword: ${{ secrets.DEPLOY_PASS }}
+        run: ./gradlew publishMavenPublicationToOpencollabRepository
+
+      - name: Notify Discord
+        if: ${{ (success() || failure()) && github.repository == 'GeyserMC/unnamed-creative' }}
+        uses: Tim203/actions-git-discord-webhook@main
+        with:
+          webhook_url: ${{ secrets.DISCORD_WEBHOOK }}
